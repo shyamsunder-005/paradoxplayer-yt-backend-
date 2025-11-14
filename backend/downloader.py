@@ -3,11 +3,6 @@ import io
 import zipfile
 import yt_dlp
 import shutil
-import ssl
-
-
-ssl._create_default_https_context = ssl._create_unverified_context
-
 
 QUALITY_OPTIONS = {
     'Best': 'best',
@@ -18,15 +13,13 @@ QUALITY_OPTIONS = {
 }
 
 def get_metadata(url):
-    ydl_opts = {"quiet": True, "ignoreerrors": True}
+    ydl_opts = {"quiet": True, "ignoreerrors": True, "nocheckcertificate": True}
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         return ydl.extract_info(url, download=False)
-
 
 def get_available_formats(url):
     data = get_metadata(url)
     return data.get("formats", [])
-
 
 def download_video_or_playlist(url, download_path='downloads',
                                download_type='video', quality='Best',
@@ -37,7 +30,6 @@ def download_video_or_playlist(url, download_path='downloads',
     os.makedirs(download_path, exist_ok=True)
 
     is_playlist = (content_type == 'Playlist')
-
     ydl_format = 'bestaudio/best' if download_type == 'audio' else QUALITY_OPTIONS.get(quality, 'best')
 
     ydl_opts = {
@@ -49,7 +41,6 @@ def download_video_or_playlist(url, download_path='downloads',
         'nocheckcertificate': True,
         'no_warnings': True,
         'geo_bypass': True,
-        'geo_bypass_country': 'IN',
     }
 
     if download_type == 'audio':
