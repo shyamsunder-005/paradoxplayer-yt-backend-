@@ -1,22 +1,11 @@
 from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
-import io
-import ssl
-
-ssl._create_default_https_context = ssl._create_unverified_context
-
-from downloader import (
-    download_video_or_playlist,
-    get_metadata,
-    get_available_formats
-)
+from downloader import download_video_or_playlist, get_metadata, get_available_formats
 
 app = Flask(__name__)
-CORS(app)
+CORS(app)  # Allow all origins for now; you can restrict to frontend URL
 
-# ------------------------
-# 🔍 SEARCH (keyword only)
-# ------------------------
+# 🔍 SEARCH
 @app.route("/search", methods=["GET"])
 def search():
     q = request.args.get("q") or request.args.get("query")
@@ -25,7 +14,6 @@ def search():
 
     from yt_dlp import YoutubeDL
     opts = {"quiet": True, "ignoreerrors": True}
-
     with YoutubeDL(opts) as ydl:
         results = ydl.extract_info(f"ytsearch10:{q}", download=False)
 
@@ -42,37 +30,28 @@ def search():
     return jsonify(videos)
 
 
-# ------------------------
 # ℹ️ METADATA
-# ------------------------
 @app.route("/metadata", methods=["GET"])
 def metadata_endpoint():
     url = request.args.get("url")
     if not url:
         return jsonify({"error": "Missing ?url"}), 400
-
     return jsonify(get_metadata(url))
 
 
-# ------------------------
-# 🎞 AVAILABLE FORMATS
-# ------------------------
+# 🎞 FORMATS
 @app.route("/formats", methods=["GET"])
 def formats_endpoint():
     url = request.args.get("url")
     if not url:
         return jsonify({"error": "Missing ?url"}), 400
-
     return jsonify(get_available_formats(url))
 
 
-# ------------------------
 # ⬇ DOWNLOAD ZIP
-# ------------------------
 @app.route("/download", methods=["POST"])
 def download_endpoint():
     data = request.json
-
     url = data.get("url")
     content_type = data.get("content_type", "Single Video")
     download_type = data.get("download_type", "video")
@@ -90,17 +69,10 @@ def download_endpoint():
         zip_output=True
     )
 
-    return send_file(
-        zip_buffer,
-        mimetype="application/zip",
-        as_attachment=True,
-        download_name=zip_filename
-    )
+    return send_file(zip_buffer, mimetype="application/zip", as_attachment=True, download_name=zip_filename)
 
 
-# ------------------------
-# ▶ WATCH ONLINE (stream URL)
-# ------------------------
+# ▶ WATCH ONLINE
 @app.route("/watch-online", methods=["GET"])
 def watch_online():
     url = request.args.get("url")
@@ -108,7 +80,6 @@ def watch_online():
         return jsonify({"error": "Missing ?url"}), 400
 
     data = get_metadata(url)
-
     for fmt in data.get("formats", []):
         if fmt.get("acodec") != "none" and fmt.get("vcodec") != "none":
             if fmt.get("url"):
@@ -120,7 +91,3 @@ def watch_online():
 @app.route("/")
 def home():
     return {"message": "🔥 Flask backend running, Shyam the Emperor 🔥"}
-
-
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
